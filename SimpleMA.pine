@@ -1,0 +1,40 @@
+//@version=3
+study("SMA Bot",shorttitle="IDK",overlay=true)
+
+isBull=false
+isBear=false
+
+isBull:=nz(isBull[1])
+isBear:=nz(isBear[1])
+
+isNotRanging=false
+NotinRange(x) => close[x]<sma(close,100) and close[x]<sma(close,200) or (close[x]>sma(close,100) and close[x]>sma(close,200))
+isNotRanging:=NotinRange(3) and NotinRange(2) and NotinRange(3) and NotinRange(4)
+
+
+bullSMA=sma(close,100)>sma(close,133) and sma(close,133)>sma(close,166) and sma(close,166)>sma(close,200) and not isBull and close>sma(close,100) and isNotRanging
+bearSMA=sma(close,100)<sma(close,133) and sma(close,133)<sma(close,166) and sma(close,166)<sma(close,200) and not isBear and close<sma(close,100) and isNotRanging
+
+closeLong=isBull and close<sma(close,166)
+closeShort=isBear and close>sma(close,166)
+
+
+if(closeLong)
+    isBull:=false
+if(closeShort)
+    isBear:=false
+
+plotshape(bullSMA , title='Long',textcolor=white,style=shape.labelup, size = size.normal, location=location.belowbar, color=purple, text="Long", offset=0)
+plotshape(bearSMA, title='Short',textcolor=white,style=shape.labeldown, size = size.normal, location=location.abovebar, color=purple, text="Short", offset=0)
+plotshape(closeLong, title='Close Long ',textcolor=white,style=shape.labeldown, size = size.normal, location=location.abovebar, color=purple, text="Close Long", offset=0)
+plotshape(closeShort, title='Close Short',textcolor=white,style=shape.labeldown, size = size.normal, location=location.abovebar, color=purple, text="Close Short", offset=0)
+
+plot(sma(close,100),color=green,linewidth=2)
+plot(sma(close,133),color=green,linewidth=2)
+plot(sma(close,166),color=green,linewidth=2)
+plot(sma(close,200),color=green,linewidth=2)
+
+isBull := bullSMA  ? true : (closeLong == true ? false : isBull)
+isBear := bearSMA  ? true : (closeShort == true ? false : isBear)
+
+
