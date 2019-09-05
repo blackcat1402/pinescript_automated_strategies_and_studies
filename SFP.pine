@@ -1,0 +1,161 @@
+// @version=3
+study( title="SFP", shorttitle="SFP bot", overlay=true)
+
+
+// SFP Code
+//Settings for defining a SFP
+underLowest = input(title="underLowest", type=float, defval=0.985, minval=-10, maxval=10)
+closeLowest=input(title="closeLowest", type=float, defval=0.9945, minval=-10, maxval=10)
+
+aboveHighest = input(title="aboveHighest", type=float, defval=1.015, minval=-10, maxval=10)
+closeHighest = input(title="closeHighest", type=float, defval=1.0055, minval=-10, maxval=10)
+
+//Since when ?
+lowestLocal=offset(security("XBTUSD","240",lowest(low,83)),+1)
+highestLocal=offset(security("XBTUSD","240",highest(high,83)),+1)
+
+lowestVeryLocal=offset(security("XBTUSD","240",lowest(low,10)),+1)
+highestVeryLocal=offset(security("XBTUSD","240",highest(high,10)),+1)
+
+// <SFPCODE>
+
+//Boolean -> is current bar UP or DOWN?
+isUp=false
+isDown=false
+isBearMACD=false
+isBullMACD=false
+//Init storage
+isLongOpen = false
+isShortOpen = false
+isDojis=false
+isHighestVolume=false
+//Bool is highest volume since n bars
+highestVolume=true
+isShortCond=false
+isLongCond=false
+stopPrice=0.0
+stopPrice:= nz(stopPrice[1])
+//Order open on previous ticker?
+isHighestVolume:=nz(isHighestVolume[1])
+isDojis:=nz(isDojis[1])
+isLongCond:=nz(isLongCond[1])
+isShortCond:=nz(isShortCond[1])
+isBullMACD:=nz(isBullMACD[1])
+isBearMACD:=nz(isBearMACD[1])
+isLongOpen := nz(isLongOpen[1])
+isShortOpen := nz(isShortOpen[1])
+
+// SFP Code
+
+//Condition for a SFP
+isSFPLow=(security("XBTUSD","240",close)>closeLowest*lowestLocal and security("XBTUSD","240",low)<underLowest*lowestLocal) and security("XBTUSD","240",high)*0.98<security("XBTUSD","240",close) and security("XBTUSD","240",close)>security("XBTUSD","240",open)*0.99
+isSFPHigh=(security("XBTUSD","240",close)<closeHighest*highestLocal and security("XBTUSD","240",high)>aboveHighest*highestLocal) and security("XBTUSD","240",low)*1.02>security("XBTUSD","240",close) and security("XBTUSD","240",close)<security("XBTUSD","240",open)*0.99
+// PROPULSOR CODE :
+
+isPropulsorUp=close>open*1.03 and low<open*0.991 and close>=high*0.993
+isPropulsorDown=close<open*0.97 and high>open*1.0091 and close<=low*1.007
+
+
+//Is local candle the biggest volume of 96 lasts candles
+for i = 0 to 96
+    if(volume[i]>volume)
+        highestVolume:=false
+// <SFPCODE>
+
+//isCurrentCandle up or down
+if(close>open)
+    isUp:=true
+if(close<open)
+    isDown:=true
+    
+//DOJI / DOJICHAINS / BULLISH ENGULFING / BEARISH ENGULFING
+    
+//What is a doji? What is a doji chain?
+
+//Defining precision for whats a doji
+Precision = input(0.22, minval=0.0001, title="Precision")
+doji(x) => (abs(open[x] - close[x]) <= (high[x] - low[x]) * Precision)
+dojiChain=doji(0) and doji(1) and doji(2) and doji(3) 
+dojiChainPos=(doji(0) and isUp) and (doji(1) and isUp[1]) and (doji(2) and isUp[2]) and (doji(3) and isUp[3])
+dojiChainNeg=(doji(0) and isDown) and (doji(1) and isDown[1]) and (doji(2) and isDown[2]) and (doji(3) and isDown[3])
+// Bearish Engulfing
+BearEngulfing=(close[3] > open[3] and open[2] > close[2] and open[2] >= close[3] and open[3]*0.98 >= close[2] and open[2] - close[2] > close[3] - open[3] and open[7] < open[2] and close[1]<open[1] and close<open)
+// Bullish Engulfing
+BullEngulfing=(open[3] > close[3] and close[2] > open[2] and close[2] >= open[3]*1.02 and close[3] >= open[2] and close[2] - open[2] > open[3] - close[3] and open[7] > open[2] and close[1]>open[1] and close>open)
+
+//AlertCondition
+longCond=isSFPLow
+shortCond=isSFPHigh
+//Stop conditions
+stopLong=false
+stopShort=false
+stopLong:=(low<stopPrice) and isLongOpen
+stopShort:=(high>stopPrice) and isShortOpen
+//storing stop loss
+if(longCond)
+    stopPrice:=low 
+if(shortCond)
+    stopPrice:=high
+if(stopShort)
+    isShortOpen:=false
+if(stopLong)
+    isLongOpen:=false
+isHighestVolume:=highestVolume ? true : false
+
+// MACD Code
+source = close
+fastLength = input(21, minval=1), slowLength=input(36,minval=1)
+signalLength=input(15,minval=1)
+fastMA = ema(source, fastLength)
+slowMA = ema(source, slowLength)
+macd = fastMA - slowMA
+signal = sma(macd, signalLength)
+hist = macd - signal
+
+macdUpLasted=false
+macdDownLasted=false
+    //did macd over or under lasted more than 70 candles?
+if(crossunder(signal,macd))
+    macdDownLasted:=true
+    for i = 1 to 30
+        if(not isBearMACD[i])
+            macdDownLasted:=false
+if(crossover(signal,macd))
+    macdUpLasted:=true
+    for i = 1 to 30
+        if(not isBullMACD[i])
+            macdUpLasted:=false
+// <MACDCODE>
+
+//ABOVE OR BELOW PAC CODE
+isNotRanging=false
+NotinRange(x) => close[x]<sma(close,100) and close[x]<sma(close,200) or (close[x]>sma(close,100) and close[x]>sma(close,200))
+isNotRanging:=NotinRange(3) and NotinRange(2) and NotinRange(3) and NotinRange(4)
+
+bullSMA=sma(close,100)>sma(close,133) and sma(close,133)>sma(close,166) and sma(close,166)>sma(close,200) and close>sma(close,100) and isNotRanging
+bearSMA=sma(close,100)<sma(close,133) and sma(close,133)<sma(close,166) and sma(close,166)<sma(close,200) and close<sma(close,100) and isNotRanging
+//<ABOVEORBELOWPACCODE>
+
+plotshape(longCond, title='SFP Low',textcolor=white,style=shape.labelup, size = size.normal, location=location.belowbar, color=green, text="SFPLow", offset=0)
+plotshape(shortCond, title='SFP High',textcolor=white,style=shape.labeldown, size = size.normal, location=location.abovebar, color=green, text="SFPHigh", offset=0)
+plotshape(isHighestVolume and isUp, title='High Volume',textcolor=green,size = size.tiny, location=location.belowbar,style=shape.triangleup,color=white, text="V", offset=0)
+plotshape(isHighestVolume and isDown, title='High Volume',textcolor=green,size = size.tiny, location=location.abovebar,style=shape.triangledown, color=white, text="V", offset=0)
+
+plotshape(dojiChainPos and not isDojis, title='Several Dojis UP',textcolor=white,style=shape.labelup, size = size.normal, location=location.belowbar, color=purple, text="Dojis Pos", offset=0)
+plotshape(dojiChainNeg and not isDojis, title='Several Dojis DOWN',textcolor=white,style=shape.labeldown, size = size.normal, location=location.abovebar, color=#D2691E, text="Dojis Neg", offset=0)
+plotshape(crossunder(signal,macd) and not isBullMACD and macdDownLasted, title='Bull MACD',textcolor=white,style=shape.triangleup, size = size.tiny, location=location.belowbar, color=#FFC0CB, text="M", offset=0)
+plotshape(crossover(signal,macd) and not isBearMACD and macdUpLasted, title='Bull MACD',textcolor=white,style=shape.triangledown , size = size.tiny, location=location.abovebar, color=#FFC0CB, text="M", offset=0)
+
+plotshape(isPropulsorUp, title='Propulsor Up',textcolor=white,style=shape.labelup, size = size.tiny, location=location.belowbar, color=aqua, text="UP", offset=0)
+plotshape(isPropulsorDown, title='Propulsor Down',textcolor=white,style=shape.labeldown, size = size.tiny, location=location.abovebar, color=aqua, text="DOWN", offset=0)
+
+
+barcolor(bullSMA ? blue : na )
+barcolor(bearSMA ? white : na)
+
+isLongOpen := longCond  ? true : (stopLong == true ? false : isLongOpen)
+isShortOpen := shortCond ? true : (stopShort == true ? false : isShortOpen)
+isLongCond := longCond ? true : false
+isDojis := dojiChainPos or dojiChainNeg ? true : false
+isBullMACD := crossunder(signal,macd) ? true : (crossover(signal,macd) == true ? false : isBullMACD)
+isBearMACD := crossover(signal,macd) ? true : (crossunder(signal,macd) == true ? false : isBearMACD)
