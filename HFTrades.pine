@@ -1,0 +1,58 @@
+//@version=3
+study("HF TEST bot", shorttitle="HF TEST bot",overlay=true)
+isLongOpen = false
+isShortOpen = false
+
+isLongOpen:=nz(isLongOpen[1])
+isShortOpen:=nz(isShortOpen[1])
+
+plot(ema(close,180),color=blue,linewidth=3)
+plot(ema(high,180),color=green,linewidth=2)
+plot(ema(low,180),color=red,linewidth=2)
+plot(ema(high,100),color=white)
+plot(ema(low,100),color=white)
+
+
+// === BACKTEST RANGE ===
+FromMonth = input(defval = 1, title = "From Month", minval = 1)
+FromDay   = input(defval = 1, title = "From Day", minval = 1)
+FromYear  = input(defval = 2018, title = "From Year", minval = 2018)
+ToMonth   = input(defval = 1, title = "To Month", minval = 1)
+ToDay     = input(defval = 1, title = "To Day", minval = 1)
+ToYear    = input(defval = 9999, title = "To Year", minval = 9999)
+
+enter_fast = input(20, minval=1)
+exit_fast = input(10, minval=1)
+exit_fast_short=input(10,minval=1)
+enter_fast_short=input(20,minval=1)
+
+fastL = highest(close, enter_fast)
+fastS = highest(close ,exit_fast_short)
+fastLC = lowest(close, exit_fast)
+
+
+//entrées et sorties pour long et short, le short utilise la sortie du long comme entrée
+enterL1 = close > fastL[1] and close>ema(high*1.005,180) and close[1]>ema(high*1.005,180) and close>ema(high*1.005,180) and close>=vwma(close,110)
+exitL1 =close<ema(low,180) and close[1]<ema(low,180) and close[2]<ema(low,180)
+enterS= close > fastS[1] and close<ema(low,180) and close[1]<ema(low,180) and close[2]<ema(low,180) and close<=vwma(close,110)
+exitS=close>=ema(high,89) and close[1]>=ema(high[1],89) and close[2]>=ema(high[2],89)
+
+//strategy.entry("Long",long=true,when=enterL1 and (time > timestamp(FromYear, FromMonth, FromDay, 00, 00)) and (time < timestamp(ToYear, ToMonth, ToDay, 23, 59)))
+//strategy.entry("Short",long=false,when=enterS and (time > timestamp(FromYear, FromMonth, FromDay, 00, 00)) and (time < timestamp(ToYear, ToMonth, ToDay, 23, 59)))
+//strategy.close("Short",when=exitS and (time > timestamp(FromYear, FromMonth, FromDay, 00, 00)) and (time < timestamp(ToYear, ToMonth, ToDay, 23, 59)))
+//strategy.close("Long",when=exitL1 and (time > timestamp(FromYear, FromMonth, FromDay, 00, 00)) and (time < timestamp(ToYear, ToMonth, ToDay, 23, 59)))
+
+alertcondition(enterL1 and not isLongOpen[1],title='Entry Long', message='HFLong')
+alertcondition(enterS and not isShortOpen[1],title='Entry Short', message='HFShort')
+
+
+plotshape(enterL1 and not isLongOpen[1], title='Entry Long',textcolor=white,style=shape.labelup, size = size.normal, location=location.belowbar, color=green, text="L", offset=0)
+plotshape(enterS and not isShortOpen[1], title='Entry Short',textcolor=white,style=shape.labeldown, size = size.normal, location=location.abovebar, color=green, text="S", offset=0)
+//plotshape(exitL1 and not isLongOpen[1], title='Stop Long',textcolor=white,style=shape.labeldown, size = size.normal, location=location.abovebar, color=green, text="SL", offset=0)
+//plotshape(exitS and isShortOpen[1], title='Stop Short',textcolor=white,style=shape.labelup, size = size.normal, location=location.belowbar, color=green, text="SS", offset=0)
+
+isLongOpen := enterL1  ? true : (enterS == true ? false : isLongOpen)
+isShortOpen := enterS ? true : (enterL1 == true ? false : isShortOpen)
+
+
+
