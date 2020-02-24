@@ -3,8 +3,8 @@ Trading indicators and strategies written in PineScript
 <p align="center">
   <img src="https://fr.tradingview.com/static/images/logo-v-1200x630.png">
 </p>  
-## SFP 
 
+## SFP 
 A custom indicator grouping a lot of usefull stuffs ( MACD , SFP, Volume analysis, EMAS....)
 
 ## HFBot
